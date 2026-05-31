@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MOVE Clínica — Presentació Pacients</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --black:    #080808;
+      --dark:     #111111;
+      --card:     #161616;
+      --border:   #252525;
+      --gold:     #C9A86C;
+      --gold-dim: #9A7C4A;
+      --white:    #FFFFFF;
+      --gray:     #8A8A8A;
+      --light:    #D0D0D0;
+      --font:     'Urbanist', system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: var(--font);
+      background: var(--black);
+      color: var(--white);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── PROGRESS BAR ── */
+    #progress-bar {
+      position: fixed; top: 0; left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+      transition: width 0.5s cubic-bezier(0.16,1,0.3,1);
+      z-index: 1000;
+      box-shadow: 0 0 10px rgba(201,168,108,0.5);
+    }
+
+    /* ── SLIDE COUNTER ── */
+    #slide-counter {
+      position: fixed; bottom: 32px; right: 48px;
+      z-index: 200;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.15em;
+      color: var(--gray);
+    }
+    #slide-counter span { color: var(--gold); font-weight: 700; }
+
+    /* ── NAV DOTS ── */
+    #nav-dots {
+      position: fixed; bottom: 32px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      display: flex; gap: 8px; align-items: center;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--border); border: 1px solid var(--gray);
+      cursor: pointer;
+      transition: background 0.3s, width 0.3s;
+    }
+    .dot.active {
+      background: var(--gold); border-color: var(--gold);
+      width: 20px; border-radius: 3px;
+    }
+
+    /* ── ARROW BUTTONS ── */
+    .nav-arrow {
+      position: fixed; top: 50%; transform: translateY(-50%);
+      z-index: 200;
+      width: 48px; height: 48px;
+      border: 1px solid var(--border);
+      background: rgba(8,8,8,0.7);
+      backdrop-filter: blur(12px);
+      color: var(--light); border-radius: 50%;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.2s, color 0.2s;
+      font-size: 18px;
+    }
+    .nav-arrow:hover { border-color: var(--gold); color: var(--gold); }
+    #btn-prev { left: 24px; }
+    #btn-next { right: 24px; }
+
+    /* ── LOGO WATERMARK ── */
+    .logo-mark {
+      position: fixed; top: 28px; left: 48px;
+      z-index: 300;
+      font-size: 17px; font-weight: 900; letter-spacing: 0.14em;
+      color: var(--white); opacity: 0.9;
+    }
+    .logo-mark span { color: var(--gold); }
+
+    /* ── DECK ── */
+    .deck { width: 100vw; height: 100vh; position: relative; }
+
+    .slide {
+      position: absolute; inset: 0;
+      opacity: 0; transform: translateX(60px);
+      transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1),
+                  transform 0.6s cubic-bezier(0.16,1,0.3,1);
+      pointer-events: none;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      overflow: hidden;
+    }
+    .slide.active  { opacity: 1; transform: translateX(0); pointer-events: auto; }
+    .slide.exit    { opacity: 0; transform: translateX(-60px); }
+
+    /* ── SHARED ── */
+    .section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.25em;
+      color: var(--gold); text-transform: uppercase; margin-bottom: 12px;
+    }
+    .gold-line { width: 40px; height: 2px; background: var(--gold); margin: 18px 0; }
+    .gold-divider { width: 48px; height: 1.5px; background: var(--gold); opacity: 0.6; }
+
+    /* ══════════════════════════════════════
+       S1 — HERO
+    ══════════════════════════════════════ */
+    #s1 { background: var(--black); }
+    .hero-video-bg { position: absolute; inset: 0; z-index: 0; }
+    .hero-video-bg video {
+      width: 100%; height: 100%; object-fit: cover;
+      filter: brightness(0.25) saturate(0.6);
+    }
+    .hero-overlay {
+      position: absolute; inset: 0; z-index: 1;
+      background:
+        radial-gradient(ellipse 80% 70% at 50% 60%, rgba(201,168,108,0.06) 0%, transparent 70%),
+        linear-gradient(to bottom, transparent 55%, var(--black) 100%);
+    }
+    .hero-content {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; gap: 24px; padding: 0 24px;
+      animation: heroReveal 1.4s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes heroReveal {
+      from { opacity: 0; transform: translateY(40px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hero-eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.28em;
+      color: var(--gold); text-transform: uppercase;
+    }
+    .hero-title {
+      font-size: clamp(64px, 11vw, 130px);
+      font-weight: 900; letter-spacing: -0.02em; line-height: 0.9;
+      color: var(--white);
+    }
+    .hero-title span { color: var(--gold); }
+    .hero-sub {
+      font-size: clamp(14px, 2vw, 20px); font-weight: 400;
+      color: var(--light); letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .hero-tagline {
+      font-size: clamp(15px, 1.8vw, 20px); font-weight: 300;
+      font-style: italic; color: var(--gray); letter-spacing: 0.04em;
+    }
+    .hero-location { font-size: 13px; font-weight: 500; color: var(--gray); letter-spacing: 0.08em; }
+    .opening-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 20px;
+      border: 1px solid rgba(201,168,108,0.4); border-radius: 100px;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
+      color: var(--gold); text-transform: uppercase;
+    }
+    .pulse-dot {
+      width: 7px; height: 7px; background: var(--gold);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(1.4); }
+    }
+
+    /* ══════════════════════════════════════
+       S2 — QUI SOM
+    ══════════════════════════════════════ */
+    #s2 { background: var(--dark); padding: 60px 80px; }
+    .s2-inner {
+      width: 100%; max-width: 1200px;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: center;
+    }
+    .s2-left h2 {
+      font-size: clamp(32px, 4vw, 56px);
+      font-weight: 900; letter-spacing: -0.02em; line-height: 1.05;
+      color: var(--white); margin-bottom: 20px;
+    }
+    .s2-left p { font-size: 15px; font-weight: 400; line-height: 1.8; color: var(--gray); }
+    .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .team-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; overflow: hidden;
+      transition: border-color 0.3s, transform 0.3s;
+    }
+    .team-card:hover { border-color: var(--gold-dim); transform: translateY(-4px); }
+    .team-photo {
+      width: 100%; aspect-ratio: 3/4; object-fit: cover;
+      filter: grayscale(30%); transition: filter 0.3s; display: block;
+    }
+    .team-card:hover .team-photo { filter: grayscale(0%); }
+    .team-info { padding: 16px; }
+    .team-name { font-size: 13px; font-weight: 800; color: var(--white); margin-bottom: 4px; }
+    .team-role { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: var(--gold); text-transform: uppercase; margin-bottom: 6px; }
+    .team-spec { font-size: 11px; color: var(--gray); line-height: 1.5; }
+
+    /* ══════════════════════════════════════
+       S3 — LA NOSTRA CLÍNICA (galeria espais)
+    ══════════════════════════════════════ */
+    #s3 { background: var(--black); padding: 60px 80px; }
+    .s3-inner {
+      width: 100%; max-width: 1200px;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 60px; align-items: center;
+    }
+    /* 6-foto mosaic: 2 cols × 3 rows */
+    .space-gallery {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: repeat(3, 140px);
+      gap: 4px;
+      border-radius: 4px; overflow: hidden;
+    }
+    .space-gallery img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      transition: transform 0.4s, filter 0.4s;
+      filter: brightness(0.9);
+    }
+    .space-gallery img:hover { transform: scale(1.05); filter: brightness(1.05); }
+    .s3-right h2 {
+      font-size: clamp(28px, 3.5vw, 48px);
+      font-weight: 900; letter-spacing: -0.02em; line-height: 1.1;
+      color: var(--white); margin-bottom: 20px;
+    }
+    .space-features { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .space-feature {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 12px 16px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 4px;
+      transition: border-color 0.3s;
+    }
+    .space-feature:hover { border-color: var(--gold-dim); }
+    .feature-dot {
+      width: 6px; height: 6px; background: var(--gold);
+      border-radius: 50%; margin-top: 6px; flex-shrink: 0;
+    }
+    .feature-text { font-size: 13px; font-weight: 500; color: var(--light); line-height: 1.5; }
+    .feature-text span { color: var(--gold); font-weight: 700; }
+
+    /* ══════════════════════════════════════
+       S4 — PLÀNOL DEL LOCAL (NOU)
+    ══════════════════════════════════════ */
+    #s4 { background: var(--black); }
+    .planell-bg {
+      position: absolute; inset: 0; z-index: 0;
+    }
+    .planell-bg img {
+      width: 100%; height: 100%; object-fit: contain;
+      display: block;
+    }
+    .planell-overlay {
+      position: absolute; inset: 0; z-index: 1;
+      background:
+        linear-gradient(to right, rgba(8,8,8,0.7) 0%, transparent 30%, transparent 70%, rgba(8,8,8,0.7) 100%),
+        linear-gradient(to bottom, rgba(8,8,8,0.55) 0%, transparent 20%, transparent 80%, rgba(8,8,8,0.55) 100%);
+    }
+    .planell-header {
+      position: absolute; top: 48px; left: 80px;
+      z-index: 2;
+    }
+    .planell-header .section-label { margin-bottom: 8px; }
+    .planell-header h2 {
+      font-size: clamp(28px, 3.5vw, 48px);
+      font-weight: 900; letter-spacing: -0.02em; line-height: 1.1;
+      color: var(--white);
+    }
+
+    /* ══════════════════════════════════════
+       S5 — SERVEIS (era s4)
+    ══════════════════════════════════════ */
+    #s5 { background: var(--dark); border-top: 1px solid var(--border); padding: 60px 80px; }
+    .s5-inner { width: 100%; max-width: 1200px; }
+    .s5-header { margin-bottom: 40px; }
+    .s5-header h2 {
+      font-size: clamp(28px, 3.5vw, 48px);
+      font-weight: 900; letter-spacing: -0.02em; line-height: 1.1;
+      color: var(--white);
+    }
+    .services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+    .service-card {
+      background: var(--card); padding: 32px 28px;
+      border: 1px solid var(--border);
+      transition: background 0.3s, border-color 0.3s, transform 0.3s;
+    }
+    .service-card:hover { background: #1c1c1c; border-color: var(--gold-dim); transform: translateY(-3px); z-index: 2; }
+    .service-icon { width: 36px; height: 36px; margin-bottom: 20px; color: var(--gold); }
+    .service-icon svg { width: 100%; height: 100%; }
+    .service-name { font-size: 16px; font-weight: 800; color: var(--white); margin-bottom: 10px; }
+    .service-desc { font-size: 12.5px; color: var(--gray); line-height: 1.65; }
+
+    /* ══════════════════════════════════════
+       S6 — PER A QUI (era s5)
+    ══════════════════════════════════════ */
+    #s6 { background: var(--black); padding: 60px 80px; }
+    .s6-inner { width: 100%; max-width: 1200px; }
+    .s6-header { margin-bottom: 40px; }
+    .s6-header h2 {
+      font-size: clamp(28px, 3.5vw, 48px);
+      font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; color: var(--white);
+    }
+    .segments-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .segment-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; padding: 36px 32px;
+      transition: border-color 0.3s, transform 0.3s;
+      position: relative; overflow: hidden;
+    }
+    .segment-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--gold); opacity: 0; transition: opacity 0.3s;
+    }
+    .segment-card:hover { border-color: var(--gold-dim); transform: translateY(-4px); }
+    .segment-card:hover::before { opacity: 1; }
+    .segment-number { font-size: 64px; font-weight: 900; letter-spacing: -0.04em; color: var(--border); line-height: 1; margin-bottom: 20px; }
+    .segment-title { font-size: 18px; font-weight: 800; color: var(--white); margin-bottom: 8px; }
+    .segment-age { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--gold); text-transform: uppercase; margin-bottom: 16px; }
+    .segment-desc { font-size: 13px; color: var(--gray); line-height: 1.7; }
+    .segment-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 20px; }
+    .tag { padding: 4px 10px; border: 1px solid var(--border); border-radius: 100px; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--gray); text-transform: uppercase; }
+
+    /* ══════════════════════════════════════
+       S7 — PER QUÈ MOVE (era s6)
+    ══════════════════════════════════════ */
+    #s7 { background: var(--dark); border-top: 1px solid var(--border); padding: 60px 80px; }
+    .s7-inner { width: 100%; max-width: 1200px; }
+    .s7-header { margin-bottom: 40px; }
+    .s7-header h2 {
+      font-size: clamp(28px, 3.5vw, 48px);
+      font-weight: 900; letter-spacing: -0.02em; color: var(--white);
+    }
+    .reasons-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+    .reason-card { background: var(--card); border: 1px solid var(--border); padding: 28px 24px; transition: background 0.3s, border-color 0.3s; }
+    .reason-card:hover { background: #1c1c1c; border-color: var(--gold-dim); }
+    .reason-num { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; color: var(--gold-dim); margin-bottom: 16px; }
+    .reason-title { font-size: 16px; font-weight: 800; color: var(--white); margin-bottom: 10px; line-height: 1.2; }
+    .reason-desc { font-size: 12.5px; color: var(--gray); line-height: 1.65; }
+
+    /* ══════════════════════════════════════
+       S8 — TARIFARI (era s7)
+    ══════════════════════════════════════ */
+    #s8 { background: var(--black); padding: 60px 80px; }
+    .s8-inner { width: 100%; max-width: 1100px; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; }
+    .s8-left h2 {
+      font-size: clamp(28px, 3.5vw, 48px);
+      font-weight: 900; letter-spacing: -0.02em; line-height: 1.1;
+      color: var(--white); margin-bottom: 20px;
+    }
+    .s8-left p { font-size: 14px; color: var(--gray); line-height: 1.7; }
+    .price-note {
+      margin-top: 28px; padding: 16px 20px;
+      border: 1px solid rgba(201,168,108,0.25); border-left: 3px solid var(--gold);
+      border-radius: 2px; background: rgba(201,168,108,0.04);
+      font-size: 12px; color: var(--light); line-height: 1.6;
+    }
+    .price-table { background: var(--card); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+    .price-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+    .price-row:last-child { border-bottom: none; }
+    .price-row:hover { background: rgba(255,255,255,0.02); }
+    .price-service { font-size: 13px; font-weight: 500; color: var(--light); flex: 1; padding-right: 16px; line-height: 1.4; }
+    .price-amount { font-size: 16px; font-weight: 800; color: var(--gold); white-space: nowrap; }
+    .price-row.pack { background: rgba(201,168,108,0.03); }
+    .price-row.pack .price-service { color: var(--white); font-weight: 600; }
+
+    /* ══════════════════════════════════════
+       S9 — PROCÉS (era s8)
+    ══════════════════════════════════════ */
+    #s9 { background: var(--dark); border-top: 1px solid var(--border); padding: 60px 80px; }
+    .s9-inner { width: 100%; max-width: 1100px; }
+    .s9-header { margin-bottom: 40px; }
+    .s9-header h2 {
+      font-size: clamp(28px, 3.5vw, 48px);
+      font-weight: 900; letter-spacing: -0.02em; color: var(--white);
+    }
+    .steps-row {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+      position: relative;
+    }
+    .steps-row::before {
+      content: '';
+      position: absolute; top: 28px;
+      left: calc(10% + 12px); right: calc(10% + 12px);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+    }
+    .step { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 12px; position: relative; }
+    .step-num {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 1.5px solid var(--gold-dim); background: var(--dark);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 900; color: var(--gold);
+      margin-bottom: 20px; position: relative; z-index: 1; flex-shrink: 0;
+    }
+    .step-title { font-size: 13px; font-weight: 800; color: var(--white); margin-bottom: 8px; }
+    .step-desc { font-size: 11.5px; color: var(--gray); line-height: 1.6; }
+
+    /* ══════════════════════════════════════
+       S10 — CONTACTE (era s9)
+    ══════════════════════════════════════ */
+    #s10 { background: var(--black); }
+    .contact-bg { position: absolute; inset: 0; z-index: 0; }
+    .contact-bg img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(0.12) saturate(0.4); }
+    .contact-overlay {
+      position: absolute; inset: 0; z-index: 1;
+      background: radial-gradient(ellipse 80% 70% at 50% 50%, rgba(201,168,108,0.04) 0%, transparent 70%);
+    }
+    .contact-content {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      gap: 22px; padding: 0 48px;
+    }
+    .contact-content h2 {
+      font-size: clamp(40px, 7vw, 88px);
+      font-weight: 900; letter-spacing: -0.02em; line-height: 0.95; color: var(--white);
+    }
+    .contact-content h2 span { color: var(--gold); }
+    .contact-content .tagline { font-size: 18px; font-weight: 300; font-style: italic; color: var(--gray); }
+    .contact-grid { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+    .contact-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 20px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 100px;
+      font-size: 13px; font-weight: 500; color: var(--light);
+      transition: border-color 0.3s; text-decoration: none;
+    }
+    .contact-item:hover { border-color: var(--gold-dim); }
+    .contact-item svg { color: var(--gold); flex-shrink: 0; }
+    /* link de la web — destacat */
+    .contact-item.web-link {
+      border-color: rgba(201,168,108,0.35);
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .contact-item.web-link:hover {
+      background: rgba(201,168,108,0.08);
+      border-color: var(--gold);
+    }
+    .cta-btn {
+      margin-top: 4px; padding: 16px 48px;
+      background: var(--gold); color: var(--black);
+      border-radius: 100px;
+      font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+      border: none; cursor: pointer;
+      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    .cta-btn:hover { background: #e0bb7a; transform: scale(1.04); box-shadow: 0 8px 32px rgba(201,168,108,0.3); }
+  </style>
+</head>
+<body>
+
+  <div id="progress-bar"></div>
+  <div class="logo-mark">MOVE<span>.</span></div>
+  <button class="nav-arrow" id="btn-prev" onclick="changeSlide(-1)">&#8592;</button>
+  <button class="nav-arrow" id="btn-next" onclick="changeSlide(1)">&#8594;</button>
+  <div id="nav-dots"></div>
+  <div id="slide-counter"><span id="cur">1</span> / <span id="tot">10</span></div>
+
+  <div class="deck">
+
+    <!-- ══ S1 — HERO ══ -->
+    <div class="slide active" id="s1">
+      <div class="hero-video-bg">
+        <video autoplay muted loop playsinline>
+          <source src="assetsmove/hero.mp4" type="video/mp4" />
+        </video>
+      </div>
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <div class="hero-eyebrow">Fisioteràpia · Rehabilitació · Readaptació Esportiva</div>
+        <div class="hero-title">MOVE<span>.</span></div>
+        <div class="hero-sub">El teu moviment. El teu moment.</div>
+        <div class="gold-divider"></div>
+        <div class="hero-tagline">Atenció personalitzada · Basada en l'evidència · Resultats reals</div>
+        <div class="hero-location">📍 Carrer del Cos 18 · 08240 Manresa (Bages)</div>
+        <div class="opening-badge">
+          <div class="pulse-dot"></div>
+          Obertura Setembre 2026
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ S2 — QUI SOM ══ -->
+    <div class="slide" id="s2">
+      <div class="s2-inner">
+        <div class="s2-left">
+          <div class="section-label">L'equip</div>
+          <h2>Tres fisioterapeutes.<br/>Una sola missió.</h2>
+          <div class="gold-line"></div>
+          <p>Som tres titulats per la Universitat de Manresa (promoció 2022–2026) units per crear un centre que integri la rehabilitació d'alta qualitat i la readaptació esportiva en un sol espai de referència al Bages.</p>
+          <p style="margin-top:12px;">Cada pacient és atès per un fisioterapeuta dedicat exclusivament a ell, des de la primera visita fins al seguiment post-alta.</p>
+        </div>
+        <div class="team-grid">
+          <div class="team-card">
+            <img class="team-photo" src="assetsmove/arnau.jpg" alt="Arnau Puentes" />
+            <div class="team-info">
+              <div class="team-name">Arnau Puentes</div>
+              <div class="team-role">Qualitat Assistencial</div>
+              <div class="team-spec">Fisioteràpia musculoesquelètica i teràpia manual</div>
+            </div>
+          </div>
+          <div class="team-card">
+            <img class="team-photo" src="assetsmove/ferran.jpg" alt="Ferran Purtí" />
+            <div class="team-info">
+              <div class="team-name">Ferran Purtí</div>
+              <div class="team-role">Rehabilitació</div>
+              <div class="team-spec">Rehabilitació post-quirúrgica i readaptació esportiva</div>
+            </div>
+          </div>
+          <div class="team-card">
+            <img class="team-photo" src="assetsmove/pau.jpg" alt="Pau Rebollo" />
+            <div class="team-info">
+              <div class="team-name">Pau Rebollo</div>
+              <div class="team-role">Fisioteràpia Esportiva</div>
+              <div class="team-spec">Fisioteràpia esportiva i readaptació funcional</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ S3 — LA NOSTRA CLÍNICA ══ -->
+    <div class="slide" id="s3">
+      <div class="s3-inner">
+        <!-- 6 fotos dels espais reals: recepció, caixa tractament, entrenament, vestuaris, corredor, valoració -->
+        <div class="space-gallery">
+          <img src="assetsmove/image2.png"  alt="Recepció" />
+          <img src="assetsmove/image10.png" alt="Box de tractament" />
+          <img src="assetsmove/image5.png"  alt="Sala d'entrenament" />
+          <img src="assetsmove/image8.png"  alt="Sala de valoració" />
+          <img src="assetsmove/image6.png"  alt="Vestuaris" />
+          <img src="assetsmove/image7.png"  alt="Corredor" />
+        </div>
+        <div class="s3-right">
+          <div class="section-label">Les instal·lacions</div>
+          <h2>260 m² pensats<br/>per a tu</h2>
+          <div class="gold-line"></div>
+          <div class="space-features">
+            <div class="space-feature">
+              <div class="feature-dot"></div>
+              <div class="feature-text"><span>Recepció</span> i zona d'espera confortable</div>
+            </div>
+            <div class="space-feature">
+              <div class="feature-dot"></div>
+              <div class="feature-text"><span>2 boxes</span> de tractament individual amb màxima privacitat</div>
+            </div>
+            <div class="space-feature">
+              <div class="feature-dot"></div>
+              <div class="feature-text"><span>Sala d'entrenament</span> i readaptació funcional (~120 m²)</div>
+            </div>
+            <div class="space-feature">
+              <div class="feature-dot"></div>
+              <div class="feature-text"><span>Sala de valoració biomecànica</span> i anàlisi del moviment</div>
+            </div>
+            <div class="space-feature">
+              <div class="feature-dot"></div>
+              <div class="feature-text"><span>Vestuaris</span> amb dutxes i sala de material</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ S4 — PLÀNOL DEL LOCAL (NOU) ══ -->
+    <div class="slide" id="s4">
+      <div class="planell-bg">
+        <img src="assetsmove/image4.png" alt="Plànol MOVE Clínica" />
+      </div>
+      <div class="planell-overlay"></div>
+      <div class="planell-header">
+        <div class="section-label">Distribució dels espais</div>
+        <h2>Plànol del local</h2>
+      </div>
+    </div>
+
+    <!-- ══ S5 — SERVEIS ══ -->
+    <div class="slide" id="s5">
+      <div class="s5-inner">
+        <div class="s5-header">
+          <div class="section-label">El que fem</div>
+          <h2>Els nostres serveis</h2>
+        </div>
+        <div class="services-grid">
+          <div class="service-card">
+            <div class="service-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/>
+                <path d="M12 8v4l3 3"/>
+              </svg>
+            </div>
+            <div class="service-name">Fisioteràpia Musculoesquelètica</div>
+            <div class="service-desc">Teràpia manual i tractament de lesions locomotores, dolor crònic i patologia articular.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M9 12l2 2 4-4"/>
+                <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.74 0 3.36.5 4.73 1.35"/>
+              </svg>
+            </div>
+            <div class="service-name">Rehabilitació Post-quirúrgica</div>
+            <div class="service-desc">Protocols especialitzats: LCA, meniscos, hèrnies discals, pròtesis de genoll i maluc.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+            </div>
+            <div class="service-name">Readaptació Esportiva</div>
+            <div class="service-desc">Reincorporació progressiva a l'activitat amb control de càrrega i prevenció de recidives.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </div>
+            <div class="service-name">Valoració Biomecànica</div>
+            <div class="service-desc">Anàlisi del moviment, tests de rendiment i gestió de factors de risc de lesió.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+              </svg>
+            </div>
+            <div class="service-name">Electroterapia i Agents Físics</div>
+            <div class="service-desc">TENS, ultrasonidos, TECAR, magnetoteràpia i agents físics de darrera generació.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                <line x1="6" y1="1" x2="6" y2="4"/>
+                <line x1="10" y1="1" x2="10" y2="4"/>
+                <line x1="14" y1="1" x2="14" y2="4"/>
+              </svg>
+            </div>
+            <div class="service-name">Entrenament Supervisat</div>
+            <div class="service-desc">Programes funcionals orientats a la readaptació i el manteniment de la salut activa.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ S6 — PER A QUI ══ -->
+    <div class="slide" id="s6">
+      <div class="s6-inner">
+        <div class="s6-header">
+          <div class="section-label">Els nostres pacients</div>
+          <h2>Per a qui és MOVE?</h2>
+        </div>
+        <div class="segments-grid">
+          <div class="segment-card">
+            <div class="segment-number">01</div>
+            <div class="segment-title">Esportista Actiu</div>
+            <div class="segment-age">18 — 45 anys</div>
+            <div class="segment-desc">Practica futbol, bàsquet, pàdel, ciclisme, atletisme o crossfit. Necessites recuperar-te ràpid i tornar al teu màxim nivell sense risc de recaiguda.</div>
+            <div class="segment-tags">
+              <span class="tag">Futbol</span>
+              <span class="tag">Pàdel</span>
+              <span class="tag">Ciclisme</span>
+              <span class="tag">Crossfit</span>
+            </div>
+          </div>
+          <div class="segment-card">
+            <div class="segment-number">02</div>
+            <div class="segment-title">Pacient per Derivació</div>
+            <div class="segment-age">30 — 65 anys</div>
+            <div class="segment-desc">Tens prescripció mèdica per una lesió musculoesquelètica, una intervenció quirúrgica recent o dolor crònic. Volem ajudar-te a recuperar la teva funcionalitat.</div>
+            <div class="segment-tags">
+              <span class="tag">Post-quirúrgic</span>
+              <span class="tag">Dolor crònic</span>
+              <span class="tag">Derivació metge</span>
+            </div>
+          </div>
+          <div class="segment-card">
+            <div class="segment-number">03</div>
+            <div class="segment-title">Professional amb Dolor</div>
+            <div class="segment-age">25 — 55 anys</div>
+            <div class="segment-desc">Treballes assegut hores o en posicions exigents i tens cervicàlgia, lumbàlgia o síndrome del túnel carpià. El dolor no hauria de ser part de la teva rutina.</div>
+            <div class="segment-tags">
+              <span class="tag">Cervicàlgia</span>
+              <span class="tag">Lumbàlgia</span>
+              <span class="tag">Túnel carpià</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ S7 — PER QUÈ MOVE ══ -->
+    <div class="slide" id="s7">
+      <div class="s7-inner">
+        <div class="s7-header">
+          <div class="section-label">Els nostres compromisos</div>
+          <h2>Per què triar MOVE?</h2>
+        </div>
+        <div class="reasons-grid">
+          <div class="reason-card">
+            <div class="reason-num">01</div>
+            <div class="reason-title">Atenció 1:1 exclusiva</div>
+            <div class="reason-desc">Un fisioterapeuta dedicat únicament a tu durant tota la sessió. Sense compartir espai, sense distraccions.</div>
+          </div>
+          <div class="reason-card">
+            <div class="reason-num">02</div>
+            <div class="reason-title">Primera visita &lt; 72 hores</div>
+            <div class="reason-desc">Demanes cita i en menys de 3 dies ja estàs sent atès. Sabem que el temps de recuperació comença ara.</div>
+          </div>
+          <div class="reason-card">
+            <div class="reason-num">03</div>
+            <div class="reason-title">Reserva online 24/7</div>
+            <div class="reason-desc">Des del mòbil, qualsevol dia i hora, sense trucades ni esperes. Gestiona la teva agenda a la teva manera.</div>
+          </div>
+          <div class="reason-card">
+            <div class="reason-num">04</div>
+            <div class="reason-title">Pràctica basada en evidència</div>
+            <div class="reason-desc">Els nostres tractaments segueixen els protocols clínics més actualitzats. Ciència i resultats mesurables.</div>
+          </div>
+          <div class="reason-card">
+            <div class="reason-num">05</div>
+            <div class="reason-title">Seguiment post-alta</div>
+            <div class="reason-desc">Als 30 dies de l'alta et contactem per assegurar-nos que la teva recuperació és duradora.</div>
+          </div>
+          <div class="reason-card">
+            <div class="reason-num">06</div>
+            <div class="reason-title">Qualitat certificada ISO 9001</div>
+            <div class="reason-desc">Sistema de gestió de la qualitat des del primer dia. La teva experiència i els teus resultats, garantits.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ S8 — TARIFARI ══ -->
+    <div class="slide" id="s8">
+      <div class="s8-inner">
+        <div class="s8-left">
+          <div class="section-label">Tarifari</div>
+          <h2>Preus clars.<br/>Sense sorpreses.</h2>
+          <div class="gold-line"></div>
+          <p>Tarifari orientatiu. Cada tractament s'adapta a les teves necessitats reals. La primera valoració inclou diagnòstic fisioterapèutic complet i pla de tractament personalitzat.</p>
+          <div class="price-note">
+            💡 Els packs de 10 sessions representen un estalvi del 10–12% respecte a les sessions individuals.
+          </div>
+        </div>
+        <div class="price-table">
+          <div class="price-row">
+            <div class="price-service">Valoració biomecànica inicial (60–90 min)</div>
+            <div class="price-amount">65 €</div>
+          </div>
+          <div class="price-row">
+            <div class="price-service">Sessió fisioteràpia individual (45–60 min)</div>
+            <div class="price-amount">45 €</div>
+          </div>
+          <div class="price-row pack">
+            <div class="price-service">Pack 10 sessions de fisioteràpia</div>
+            <div class="price-amount">400 €</div>
+          </div>
+          <div class="price-row">
+            <div class="price-service">Sessió readaptació funcional individual (60 min)</div>
+            <div class="price-amount">55 €</div>
+          </div>
+          <div class="price-row pack">
+            <div class="price-service">Pack 10 sessions de readaptació</div>
+            <div class="price-amount">480 €</div>
+          </div>
+          <div class="price-row">
+            <div class="price-service">Sessió grupal readaptació (màx. 4 persones)</div>
+            <div class="price-amount">25 €/p.</div>
+          </div>
+          <div class="price-row pack">
+            <div class="price-service">Pack mensual entrenament supervisat (8 sessions)</div>
+            <div class="price-amount">160 €/mes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ S9 — PROCÉS ══ -->
+    <div class="slide" id="s9">
+      <div class="s9-inner">
+        <div class="s9-header">
+          <div class="section-label">Com funciona</div>
+          <h2>El teu camí cap a la recuperació</h2>
+        </div>
+        <div class="steps-row">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-title">Sol·licita cita</div>
+            <div class="step-desc">Online, per telèfon o WhatsApp. Primera visita en menys de 72h.</div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-title">Valoració inicial</div>
+            <div class="step-desc">60 min d'exploració completa, diagnòstic i pla de tractament personalitzat.</div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-title">Tractament</div>
+            <div class="step-desc">Sessions individuals amb reavaloació cada 5 sessions per ajustar el pla.</div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-title">Alta i exercicis</div>
+            <div class="step-desc">Informe final i pla d'exercicis per continuar la recuperació a casa.</div>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-title">Seguiment 30 dies</div>
+            <div class="step-desc">Et contactem per assegurar-nos que la teva recuperació és duradora.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ S10 — CONTACTE ══ -->
+    <div class="slide" id="s10">
+      <div class="contact-bg">
+        <img src="assetsmove/image9.png" alt="MOVE Clínica logo" />
+      </div>
+      <div class="contact-overlay"></div>
+      <div class="contact-content">
+        <div class="section-label">Vine a conèixer-nos</div>
+        <h2>MOVE<span>.</span><br/>El teu moment<br/>és ara.</h2>
+        <p class="tagline">Fisioteràpia · Rehabilitació · Readaptació Esportiva</p>
+        <div class="gold-divider"></div>
+        <div class="contact-grid">
+          <div class="contact-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Carrer del Cos 18, Manresa
+          </div>
+          <div class="contact-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.06 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z"/></svg>
+            +34 938 XXX XXX
+          </div>
+          <div class="contact-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            @moveclinica
+          </div>
+          <!-- Link a la web local -->
+          <a class="contact-item web-link" href="https://fcxvmvzzyw-source.github.io/MOVE-Clinica/" target="_blank">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            www.moveclinica.cat
+          </a>
+        </div>
+        <button class="cta-btn" onclick="window.open('https://fcxvmvzzyw-source.github.io/MOVE-Clinica/','_blank')">
+          Visita la nostra web
+        </button>
+        <div class="opening-badge">
+          <div class="pulse-dot"></div>
+          Obertura Setembre 2026
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /deck -->
+
+  <script>
+    const TOTAL = 10;
+    let current = 0;
+
+    const slides = document.querySelectorAll('.slide');
+    const dotsContainer = document.getElementById('nav-dots');
+    const progressBar  = document.getElementById('progress-bar');
+    const curEl = document.getElementById('cur');
+
+    // Build dots
+    const dots = [];
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.addEventListener('click', () => goTo(i));
+      dotsContainer.appendChild(d);
+      dots.push(d);
+    }
+
+    function goTo(n) {
+      if (n < 0 || n >= TOTAL || n === current) return;
+      slides[current].classList.remove('active');
+      slides[current].classList.add('exit');
+      current = n;
+      slides[current].classList.add('active');
+      dots.forEach((d, i) => d.classList.toggle('active', i === current));
+      curEl.textContent = current + 1;
+      progressBar.style.width = ((current + 1) / TOTAL * 100) + '%';
+      setTimeout(() => {
+        slides.forEach(s => { if (!s.classList.contains('active')) s.classList.remove('exit'); });
+      }, 700);
+    }
+
+    function changeSlide(dir) { goTo(current + dir); }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); changeSlide(-1); }
+    });
+
+    let touchX = 0;
+    document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+    document.addEventListener('touchend',   e => {
+      const dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dx) > 50) changeSlide(dx < 0 ? 1 : -1);
+    });
+
+    progressBar.style.width = (1 / TOTAL * 100) + '%';
+  </script>
+</body>
+</html>
